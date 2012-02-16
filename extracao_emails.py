@@ -86,7 +86,7 @@ class ConvertEmail:
             for d in dirs:
                 path='/'.join([root,d])
                 for task in self.dirstasks:
-                    task((self,root,dirs,d),(self,path))
+                    task((self,root,dirs,d),(self,path,None))
             for name in files:
                 path='/'.join([root.rstrip('/'),name])
                 relative=path.split(self.dirorig,1)[-1]
@@ -104,11 +104,11 @@ def chk_ignore(self,path,newf):
 def chk_notignore(self,path,newf):
     return not chk_ignore(self,path,newf)
 def chk_notprocessed(self,path,newf):
-    return not path in self.processed
+    return not os.path.exists(newf)
 def chk_notlink(self,path,newf):
     return not os.path.islink(path)
 def endswith(self,suffix):
-    def f(self,path):
+    def f(self,path,*args):
         return path.endswith(suffix)
     return f
 def chk_thdb(self,path,newf):
