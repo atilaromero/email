@@ -15,6 +15,16 @@ sh.precall=[command.show]
 
 cmd=command.exe.clone()
 cmd.choice='subprocess.Popen'
+cmd.precall=[command.show]
+
+def mkprintsome(s):
+    n=[0]
+    def f():
+        print ' '+s[n[0]]+'\r',
+        n[0]=(n[0]+1)%len(s)
+    return f
+printbar=mkprintsome('-\\|/')
+printO=mkprintsome('.oOo')
 
 class Task:
     def always(*args,**kwargs):
@@ -72,8 +82,7 @@ class ConvertEmail:
     def __init__(self,dirorig,dirdest):
         self.dirorig=dirorig
         self.dirdest=dirdest
-        self.ignore=[]
-        self.processed=[]
+        self.ignore=readarq('/storage1/mnt/config/ignoredir')
         self.roottasks=[]
         self.dirstasks=[]
         self.filetasks=[]
@@ -84,10 +93,12 @@ class ConvertEmail:
             for task in self.roottasks:
                 task((self,root),())
             for d in dirs:
+                printO()
                 path='/'.join([root,d])
                 for task in self.dirstasks:
                     task((self,root,dirs,d),(self,path,None))
             for name in files:
+                printbar()
                 path='/'.join([root.rstrip('/'),name])
                 relative=path.split(self.dirorig,1)[-1]
                 relative=retiraacentos(relative)
@@ -100,7 +111,7 @@ class ConvertEmail:
                         task((self,path,newf),(self,newf,None))
 
 def chk_ignore(self,path,newf):
-    return self.ignore and path in self.ignore
+    return self.ignore and (path in self.ignore)
 def chk_notignore(self,path,newf):
     return not chk_ignore(self,path,newf)
 def chk_notprocessed(self,path,newf):
@@ -112,10 +123,7 @@ def endswith(self,suffix):
         return path.endswith(suffix)
     return f
 def chk_thdb(self,path,newf):
-    return all([path.find('/Thunderbird/Profiles/')>-1,
-                any([path.find('/Mail/')>-1,
-                     path.find('/ImapMail/')>-1]),
-                not path.endswith('.msf')])
+    return os.path.exists(path+'.msf')
 def rt_printroot(self,root):
         print root
 def dt_ignoredirs(self,root,dirs,d):
@@ -125,12 +133,15 @@ def ft_print(self,path,newf):
 def preparadir(newd):
     os.path.exists(newd) or os.makedirs(newd)
 def ft_dbx_mbox(self,path,newf):
+    print path
     preparadir(os.path.dirname(newf))
-    sh("readdbx -q -f '%s' -o '%s'"%(path,newf))
+    cmd(['readdbx','-q','-f',path,'-o',newf])
 def ft_pst_mbox(self,path,newf):
+    print path
     preparadir(newf)
-    sh("readpst -q -r -D '%s' -o '%s'"%(path,newf))
+    cmd(["readpst",'-q','-r','-D',path,'-o',newf])
 def ft_thdb_mbox(self,path,newf):
+    print path
     preparadir(os.path.dirname(newf))
     shutil.copy(path,newf)
 
@@ -140,7 +151,7 @@ def readarq(fpath):
         with open(fpath,'r') as fproc:
             for line in fproc:
                 if line.rstrip():
-                    result.append(line.rstrip())
+                    result.append(line.rstrip().rstrip('/'))
     return result
 
 import re
@@ -163,9 +174,12 @@ def pft_mbox_mdir(dirorig,dirdestmbox,dirdestmdir):
             if len(foundstring)>5:
                 newd=newd.replace(foundstring,foundstring[0:5])
         preparadir(newd)
-        sh("/git/email/mb2md.py -i '%s' -o '%s'"%(newf,newd))
+        preparadir(newd+'/tmp')
+        preparadir(newd+'/cur')
+        preparadir(newd+'/new')
+        cmd(['python',"/git/email/mbox2maildir.py",newf,newd])
         if os.path.exists('%s/cur'%newd):
-            if len(os.listdir('%s/cur'%newd))==0:
+            if len(os.listdir('%s/new'%newd))==0 and len(os.listdir('%s/cur'%newd))==0:
                 os.rmdir('%s/new'%newd)
                 os.rmdir('%s/tmp'%newd)
                 os.removedirs('%s/cur'%newd)
@@ -199,7 +213,7 @@ def makeplan(dirorig,dirdestmbox,dirdestmdir):
     if not cmd(['readdbx','-V']).find(readdbx_version)>-1:
         print 'readdbx version has to be %s. Download it or update sourcecode.'%readdbx_version
     obj=ConvertEmail(dirorig,dirdestmbox)
-    obj.roottasks=[]#Task(rt_printroot)]
+    obj.roottasks=[Task(rt_printroot)]
     obj.dirstasks=[Task(dt_ignoredirs,chk_ignore)]
     obj.filetasks=[Task(ft_dbx_mbox,[chk_notprocessed,
                                      chk_notignore,
