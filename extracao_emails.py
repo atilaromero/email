@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: iso-8859-1 -*-
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -73,10 +74,26 @@ def retiraacentos(s):
           ['\xc3\x9c', 'U'],
           ['\xc3\xa7', 'c'],
           ['\xc3\x87', 'C'],
+          ['?','_'],
+          [';','_'],
           ['@', '_']]
     for x,y in mapa:
         s=s.replace(x,y)
     return s
+
+def convname(newd):
+        newd=newd.replace('Documents and Settings','D_S')
+        newd=newd.replace('Configuracoes locais','C_L')
+        newd=newd.replace('Configurações locais','C_L')
+        newd=newd.replace('Dados de aplicativos','D_A')
+        newd=newd.replace('Local Settings','L_S')
+        newd=newd.replace('Application Data','A_D')
+        found=re.search('{[^}]+}',newd)
+        if found:
+            foundstring=found.group()
+            if len(foundstring)>5:
+                newd=newd.replace(foundstring,foundstring[0:5])
+        return retiraacentos(newd)
 
 class ConvertEmail:
     def __init__(self,dirorig,dirdest):
@@ -101,7 +118,7 @@ class ConvertEmail:
                 printbar()
                 path='/'.join([root.rstrip('/'),name])
                 relative=path.split(self.dirorig,1)[-1]
-                relative=retiraacentos(relative)
+                relative=convname(relative)
                 newf='/'.join([self.dirdest.rstrip('/'),relative.lstrip('/')])
                 didtask=False
                 for task in self.filetasks:
@@ -154,25 +171,11 @@ def readarq(fpath):
                     result.append(line.rstrip().rstrip('/'))
     return result
 
-import re
 def pft_mbox_mdir(dirorig,dirdestmbox,dirdestmdir):
-    def convname(newd):
-        newd=newd.replace('Documents and Settings','D_S')
-        newd=newd.replace('Configuracoes locais','C_L')
-        newd=newd.replace('Configurações locais','C_L')
-        newd=newd.replace('Dados de aplicativos','D_A')
-        newd=newd.replace('Local Settings','L_S')
-        newd=newd.replace('Application Data','A_D')
-        return retiraacentos(newd)
     def __xcall__(self,path,newf):
         relative=newf.split(dirdestmbox,1)[-1]
         newd=dirdestmdir+relative
         newd=convname(newd)
-        found=re.search('{[^}]+}',newd)
-        if found:
-            foundstring=found.group()
-            if len(foundstring)>5:
-                newd=newd.replace(foundstring,foundstring[0:5])
         preparadir(newd)
         preparadir(newd+'/tmp')
         preparadir(newd+'/cur')
@@ -228,7 +231,7 @@ def makeplan(dirorig,dirdestmbox,dirdestmdir):
                                       chk_notlink,chk_thdb]),
                    ]
     obj.postfiletasks=[Task(ft_print),
-                       Task(pft_mbox_mdir(dirorig,dirdestmbox,dirdestmdir)),
+                       #Task(pft_mbox_mdir(dirorig,dirdestmbox,dirdestmdir)),
                        ]
     return obj
 
