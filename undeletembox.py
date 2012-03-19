@@ -7,7 +7,7 @@ def main(path):
     for line in fileinput.input(path,inplace=True):
         start='X-Mozilla-Status:'
         if line.startswith(start):
-            digits=re.search('[0123456789abcdef]{4}',line)
+            digits=re.search('[0123456789abcdefABCDEF]{4}',line)
             lastpos=digits.span()[1]-1
             if int(line[lastpos],16)>7:
                 newl=list(line)
