@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import undeletembox
 #from entrypoint import entrypoint
 import sys
 sys.path.insert(0,'/git/spec')
@@ -161,6 +162,7 @@ def ft_thdb_mbox(self,path,newf):
     print path
     preparadir(os.path.dirname(newf))
     shutil.copy(path,newf)
+    undeletembox.main(newf)
 
 def readarq(fpath):
     result=[]
