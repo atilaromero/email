@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tempfile
 import undeletembox
+import mboxtree2maildir
 #from entrypoint import entrypoint
 import sys
 sys.path.insert(0,'/git/spec')
@@ -83,18 +84,18 @@ def retiraacentos(s):
     return s
 
 def convname(newd):
-        newd=newd.replace('Documents and Settings','D_S')
-        newd=newd.replace('Configuracoes locais','C_L')
-        newd=newd.replace('Configurações locais','C_L')
-        newd=newd.replace('Dados de aplicativos','D_A')
-        newd=newd.replace('Local Settings','L_S')
-        newd=newd.replace('Application Data','A_D')
-        found=re.search('{[^}]+}',newd)
-        if found:
-            foundstring=found.group()
-            if len(foundstring)>5:
-                newd=newd.replace(foundstring,foundstring[0:5])
-        return retiraacentos(newd)
+    newd=retiraacentos(newd)
+    newd=newd.replace('Documents and Settings','D_S')
+    newd=newd.replace('Configuracoes locais','C_L')
+    newd=newd.replace('Dados de aplicativos','D_A')
+    newd=newd.replace('Local Settings','L_S')
+    newd=newd.replace('Application Data','A_D')
+    found=re.search('{[^}]+}',newd)
+    if found:
+        foundstring=found.group()
+        if len(foundstring)>5:
+            newd=newd.replace(foundstring,foundstring[0:5])
+    return newd
 
 class ConvertEmail:
     def __init__(self,dirorig,dirdest):
@@ -174,35 +175,10 @@ def readarq(fpath):
     return result
 
 def pft_mbox_mdir(dirorig,dirdestmbox,dirdestmdir):
-    def __xcall__(self,path,newf):
-        relative=newf.split(dirdestmbox,1)[-1]
-        newd=dirdestmdir+relative
-        newd=convname(newd)
-        preparadir(newd)
-        preparadir(newd+'/tmp')
-        preparadir(newd+'/cur')
-        preparadir(newd+'/new')
-        cmd(['python',"/git/email/mbox2maildir.py",newf,newd])
-        if os.path.exists('%s/cur'%newd):
-            if len(os.listdir('%s/new'%newd))==0 and len(os.listdir('%s/cur'%newd))==0:
-                os.rmdir('%s/new'%newd)
-                os.rmdir('%s/tmp'%newd)
-                os.removedirs('%s/cur'%newd)
-        else:
-            os.removedirs(newd)
-        for root,dirnames,filenames in os.walk(dirdestmdir):
-            for x in ['cur','new','tmp']:
-                if x in dirnames:
-                    dirnames.remove(x)
-                else:
-                    os.mkdir(os.path.join(root,x))
     def __call__(self,path,newf):
-        if os.path.isdir(newf):
-            for root,dirnames,filenames in os.walk(newf):
-                for f in filenames:
-                    __xcall__(self,path,os.path.join(root,f))
-        else:
-            __xcall__(self,path,newf)
+        relative=newf.split(dirdestmbox,1)[-1]
+        newd=dirdestmdir+relative.replace('/','\\')
+        mboxtree2maildir.main(newf,newd)
     return __call__
 
 #@entrypoint
@@ -233,7 +209,7 @@ def makeplan(dirorig,dirdestmbox,dirdestmdir):
                                       chk_notlink,chk_thdb]),
                    ]
     obj.postfiletasks=[Task(ft_print),
-                       #Task(pft_mbox_mdir(dirorig,dirdestmbox,dirdestmdir)),
+                       Task(pft_mbox_mdir(dirorig,dirdestmbox,dirdestmdir)),
                        ]
     return obj
 

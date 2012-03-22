@@ -5,9 +5,10 @@ Based on maildir2mbox.py (Nathan R. Yergler)
 """
 import mailbox
 import sys
+import glob, shutil
 def main(inbox,outbox):
     # open the existing mdir and the target mbox file
-    mbox = mailbox.UnixMailbox(file(inbox,'r'))
+    mbox = mailbox.UnixMailbox(file(inbox,'r'),factory=mailbox.mboxMessage)
     mdir = mailbox.Maildir(outbox)
 
     # iterate over messages in the mdir and add to the mbox
@@ -18,6 +19,8 @@ def main(inbox,outbox):
 
     # close and unlock
     mdir.close()
+    for f in glob.glob(outbox+'/new/*'):
+        shutil.move(f,outbox+'/cur/' )
     return count
 
 if __name__=='__main__':

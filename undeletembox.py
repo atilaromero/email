@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import fileinput
 import re
+import sys
 
 def main(path):
     subs=[[hex(x)[-1],hex(x-8)[-1]] for x in range(9,16)]
