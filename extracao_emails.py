@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: iso-8859-1 -*-
+from retiraacentos import *
 import os
 import re
 import shutil
@@ -45,43 +46,6 @@ class Task:
                 f(*fparams)
             return True
         return False
-
-def retiraacentos(s):
-    mapa=[
-          ['\xc3\xa1', 'a'],#'
-          ['\xc3\xa2', 'a'],#^
-          ['\xc3\xa3', 'a'],#~
-          ['\xc3\xa9', 'e'],
-          ['\xc3\xaa', 'e'],
-          ['\xc3\xad', 'i'],
-          ['\xc3\xae', 'i'],
-          ['\xc3\xb3', 'o'],
-          ['\xc3\xb4', 'o'],
-          ['\xc3\xb5', 'o'],
-          ['\xc3\xba', 'u'],
-          ['\xc3\xbb', 'u'],
-          ['\xc3\xbb', 'u'],#"
-          ['\xc3\x81', 'A'],
-          ['\xc3\x82', 'A'],
-          ['\xc3\x83', 'A'],
-          ['\xc3\x89', 'E'],
-          ['\xc3\x8a', 'E'],
-          ['\xc3\x8d', 'I'],
-          ['\xc3\x8e', 'I'],
-          ['\xc3\x93', 'O'],
-          ['\xc3\x94', 'O'],
-          ['\xc3\x95', 'O'],
-          ['\xc3\x9a', 'U'],
-          ['\xc3\x9b', 'U'],
-          ['\xc3\x9c', 'U'],
-          ['\xc3\xa7', 'c'],
-          ['\xc3\x87', 'C'],
-          ['?','_'],
-          [';','_'],
-          ['@', '_']]
-    for x,y in mapa:
-        s=s.replace(x,y)
-    return s
 
 def convname(newd):
     newd=retiraacentos(newd)
@@ -133,8 +97,11 @@ def chk_ignore(self,path,newf):
     return self.ignore and (path in self.ignore)
 def chk_notignore(self,path,newf):
     return not chk_ignore(self,path,newf)
-def chk_notprocessed(self,path,newf):
-    return not os.path.exists(newf)
+def chk_notprocessed(dirdestmbox,dirdestmdir):
+    ope=os.path.exists
+    def __call__(self,path,newf):
+        return (not ope(newf)) and (not ope(mbpath2mdpath(dirdestmbox,dirdestmdir,newf)))
+    return __call__
 def chk_notlink(self,path,newf):
     return not os.path.islink(path)
 def endswith(self,suffix):
@@ -144,26 +111,34 @@ def endswith(self,suffix):
 def chk_thdb(self,path,newf):
     return os.path.exists(path+'.msf')
 def rt_printroot(self,root):
-        print root
+        print 'root:',root
 def dt_ignoredirs(self,root,dirs,d):
     dirs.remove(d)
 def ft_print(self,path,newf):
-    print path
+    print 'ft_print:',path
 def preparadir(newd):
     os.path.exists(newd) or os.makedirs(newd)
 def ft_dbx_mbox(self,path,newf):
-    print path
+    print 'ft_dbx_mbox:',path
     preparadir(os.path.dirname(newf))
-    cmd(['readdbx','-q','-f',path,'-o',newf])
+    cmd(['/git/email/readdbx','-q','-f',path,'-o',newf])
 def ft_pst_mbox(self,path,newf):
-    print path
+    print 'ft_pst_mbox:',path
     preparadir(newf)
     cmd(["readpst",'-q','-r','-D',path,'-o',newf])
 def ft_thdb_mbox(self,path,newf):
-    print path
+    print 'ft_thdb_mbox',path
     preparadir(os.path.dirname(newf))
     shutil.copy(path,newf)
     undeletembox.main(newf)
+
+def ft_dbx_eml(dirorig,dirdestmbox,dirdestmdir):
+    def __call__(self,path,newf):
+        print 'undbx:',path
+        newd=mbpath2mdpath(dirdestmbox,dirdestmdir,newf)
+        preparadir(os.path.dirname(newd))
+        cmd(['undbx','--recover',path,newd])
+    return __call__
 
 def readarq(fpath):
     result=[]
@@ -174,10 +149,14 @@ def readarq(fpath):
                     result.append(line.rstrip().rstrip('/'))
     return result
 
+def mbpath2mdpath(dirdestmbox,dirdestmdir,newf):
+    relative=newf.split(dirdestmbox,1)[-1]
+    newd=dirdestmdir+relative.replace('/','\\')
+    return newd
+
 def pft_mbox_mdir(dirorig,dirdestmbox,dirdestmdir):
     def __call__(self,path,newf):
-        relative=newf.split(dirdestmbox,1)[-1]
-        newd=dirdestmdir+relative.replace('/','\\')
+        newd=mbpath2mdpath(dirdestmbox,dirdestmdir,newf)
         mboxtree2maildir.main(newf,newd)
     return __call__
 
@@ -187,26 +166,33 @@ def main(dirorig,dirdestmbox,dirdestmdir):
     obj()
 
 def makeplan(dirorig,dirdestmbox,dirdestmdir):
-    readpst_version='v0.6.53'
+    readpst_version='v0.6.54'
     if not cmd(['readpst','-V']).find(readpst_version)>-1:
         print 'readpst version has to be %s. Download it or update sourcecode.'%readpst_version
-    readdbx_version='v1.0.3'
-    if not cmd(['readdbx','-V']).find(readdbx_version)>-1:
-        print 'readdbx version has to be %s. Download it or update sourcecode.'%readdbx_version
+    undbx_version='v0.20'
+    if not cmd(['undbx','--version']).find(undbx_version)>-1:
+        print 'undbx version has to be %s. Download it or update sourcecode.'%undbx_version
     obj=ConvertEmail(dirorig,dirdestmbox)
     obj.roottasks=[Task(rt_printroot)]
     obj.dirstasks=[Task(dt_ignoredirs,chk_ignore)]
-    obj.filetasks=[Task(ft_dbx_mbox,[chk_notprocessed,
-                                     chk_notignore,
+    obj.filetasks=[Task(ft_dbx_mbox,[
+                                     endswith(obj,'.dbx'),
                                      chk_notlink,
-                                     endswith(obj,'.dbx')]),
-                   Task(ft_pst_mbox,[chk_notprocessed,
+                                     chk_notprocessed(dirdestmbox,dirdestmdir),
                                      chk_notignore,
+                                     ]),
+                   Task(ft_pst_mbox,[
+                                     endswith(obj,'.pst'),
                                      chk_notlink,
-                                     endswith(obj,'.pst')]),
-                   Task(ft_thdb_mbox,[chk_notprocessed,
+                                     chk_notprocessed(dirdestmbox,dirdestmdir),
+                                     chk_notignore,
+                                     ]),
+                   Task(ft_thdb_mbox,[
+                                      chk_thdb,
+                                      chk_notlink,
+                                      chk_notprocessed(dirdestmbox,dirdestmdir),
                                       chk_notignore,
-                                      chk_notlink,chk_thdb]),
+                                      ]),
                    ]
     obj.postfiletasks=[Task(ft_print),
                        Task(pft_mbox_mdir(dirorig,dirdestmbox,dirdestmdir)),
