@@ -14,7 +14,7 @@ def renameinplace(path):
     with open(path) as f:
         msg=rfc822.Message(f)
     dirname,basename=os.path.split(path)
-    basename='%s_%s'%(stritem(msg,'date'),stritem(msg,'subject').split('\n')[0])
+    basename='%s_%s.eml'%(stritem(msg,'date'),stritem(msg,'subject').split('\n')[0])
     basename=retirabarra(retiraacentos(basename))[:255]
     newf=choosefilename(os.path.join(dirname,basename))
     assert(newf and not os.path.exists(newf))
@@ -26,4 +26,8 @@ def renameinplace(path):
         raise e
     return newf
     
+if __name__=='__main__':
+    import sys
+    for x in sys.argv[1:]:
+        renameinplace(x)
     
